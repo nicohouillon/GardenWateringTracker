@@ -1,19 +1,7 @@
 // Google Apps Script Code for Garden Watering Tracker with Email Notifications
 
 // Configuration - UPDATE THESE EMAIL ADDRESSES AND SPREADSHEET_ID
-const GARDENER_EMAILS = [
-  // 'Greenwaygardenw57@gmail.com',
-  // 'siuwwl@yahoo.ca',
-  // 'nassa@telus.net',
-  // 'janahronek@gmail.com',
-  // 'kelsey.ranshaw@gmail.com',
-  'houillon.nicolas@proton.me',
-  // 'alisonrobbins99@gmail.com',
-  // 'g5carroll@shaw.ca',
-  // 'gord.kristjanson@gmail.com',
-  // 'bazooka270@gmail.com'
-  // Add more email addresses as needed
-];
+const GARDENER_EMAILS = {{env.EMAILS}};
 
 // !!! IMPORTANT: Replace with your actual Google Sheet ID
 const SPREADSHEET_ID = {{secret.SPREADSHEET_ID}}; 
