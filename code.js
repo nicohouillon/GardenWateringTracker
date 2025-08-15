@@ -16,7 +16,7 @@ const GARDENER_EMAILS = [
 ];
 
 // !!! IMPORTANT: Replace with your actual Google Sheet ID
-const SPREADSHEET_ID = '1vGlKKXL3KSFnkFwXVrlurehRcfnjGOet4JEN4gSOaho'; 
+const SPREADSHEET_ID = {{secret.SPREADSHEET_ID}}; 
 
 // Web app entry point
 function doGet(e) {
