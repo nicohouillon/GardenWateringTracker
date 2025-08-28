@@ -1,10 +1,11 @@
 // Google Apps Script Code for Garden Watering Tracker with Email Notifications
 
 // Configuration - UPDATE THESE EMAIL ADDRESSES AND SPREADSHEET_ID
-const GARDENER_EMAILS = {{env.EMAILS}};
-
+const emails_list = getEnv('GARDENER_EMAILS');
+const GARDENER_EMAILS = JSON.parse(emails_list);
+console.log(GARDENER_EMAILS);
 // !!! IMPORTANT: Replace with your actual Google Sheet ID
-const SPREADSHEET_ID = {{secret.SPREADSHEET_ID}}; 
+const SPREADSHEET_ID = getEnv('SPREADSHEET_ID');
 
 // Web app entry point
 function doGet(e) {
@@ -244,6 +245,7 @@ function sendWateringNotification(date, gardener, notes) {
     <span style="font-size:small;color:#888;">This is an automated notification from the Garden Watering Tracker on behalf of Greenway57 Garden Society</span>
   </div>`;
     
+
     // Send email to all gardeners
     GARDENER_EMAILS.forEach(email => {
       if (email && email.includes('@')) {
@@ -261,30 +263,53 @@ function sendWateringNotification(date, gardener, notes) {
 
 function sendEmailWithGmailApi(to, subject, htmlBody) {
   try {
-    // Encode subject as UTF-8 bytes, then standard base64 (not web-safe)
-    var subjectBase64 = Utilities.base64Encode(Utilities.newBlob(subject).getBytes()).replace(/=+$/, '');
-    var raw = [
+    const displayName = "Greenway 57 Garden Bot";
+    const aliases = GmailApp.getAliases();
+    const fromEmail = aliases.length > 0 ? aliases[1] : Session.getActiveUser().getEmail();
+    const actualFromEmail = fromEmail || Session.getActiveUser().getEmail();
+
+    console.log('Subject:', subject);
+    console.log('HTML Body length:', htmlBody.length);
+    console.log('HTML Body preview:', htmlBody.substring(0, 100));
+    // Encode subject as UTF-8 bytes, then standard base64 (like your working version)
+    const subjectBase64 = Utilities.base64Encode(Utilities.newBlob(subject).getBytes()).replace(/=+$/, '');
+    const encodedSubject = '=?UTF-8?B?' + subjectBase64 + '?=';
+
+    const raw = [
       'To: ' + to,
-      'From: Greenwaygardenw57@example.com',
-      'Subject: =?UTF-8?B?' + subjectBase64 + '?=',
+      'From: "' + displayName + '" <' + actualFromEmail + '>',
+      'Subject: ' + encodedSubject,
       'MIME-Version: 1.0',
       'Content-Type: text/html; charset=UTF-8',
       '',
       htmlBody
     ].join('\r\n');
-  
-    var utf8Bytes = Utilities.newBlob(raw).getBytes();
-    var encodedEmail = Utilities.base64EncodeWebSafe(utf8Bytes);
-  
+
+    // Encode the entire raw email as UTF-8 bytes, then base64
+    const utf8Bytes = Utilities.newBlob(raw).getBytes();
+    const encodedEmail = Utilities.base64EncodeWebSafe(utf8Bytes);
+
+    // Send using Gmail API (like your working version)
     Gmail.Users.Messages.send(
       { raw: encodedEmail },
       'me'
     );
-    console.log("Email sent.");
+    console.log(`Email sent to ${to}`);
   } catch (error) {
     console.error('Error sending email:', error);
     throw error;
   }
+}
+
+/**
+ * @param {string|undefined} key
+ * @returns {string|null|object}
+ */
+function getEnv(key) {
+  if (key) {
+    return PropertiesService.getScriptProperties().getProperty(key);
+  }
+  return PropertiesService.getScriptProperties().getProperties();
 }
 
 // Test function to debug connectivity
