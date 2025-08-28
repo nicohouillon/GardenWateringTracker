@@ -226,12 +226,37 @@ function findRecordRow(sheet, date) {
 // Send email notification when garden is watered
 function sendWateringNotification(date, gardener, notes) {
   try {
-    const formattedDate = new Date(date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    // Parse the date string as a local date to avoid timezone shifts
+    let formattedDate;
+    
+    if (typeof date === 'string') {
+      // Split the date string and create a Date object in local timezone
+      const dateParts = date.split('-'); // ["YYYY", "MM", "DD"]
+      const year = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]) - 1; // Month is 0-indexed
+      const day = parseInt(dateParts[2]);
+      
+      // Create Date object in local timezone (not UTC)
+      const localDate = new Date(year, month, day);
+      
+      formattedDate = localDate.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } else if (date instanceof Date) {
+      // If it's already a Date object, format it directly
+      formattedDate = date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } else {
+      // Fallback
+      formattedDate = String(date);
+    }
     
     const subject = `🌱 Garden Watered - ${formattedDate}`;
     
@@ -245,7 +270,6 @@ function sendWateringNotification(date, gardener, notes) {
     <span style="font-size:small;color:#888;">This is an automated notification from the Garden Watering Tracker on behalf of Greenway57 Garden Society</span>
   </div>`;
     
-
     // Send email to all gardeners
     GARDENER_EMAILS.forEach(email => {
       if (email && email.includes('@')) {
