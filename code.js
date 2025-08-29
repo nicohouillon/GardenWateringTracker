@@ -269,7 +269,7 @@ function sendWateringNotification(date, gardener, notes) {
     Thank you for taking care of our garden! 🌿<br><br>
     <span style="font-size:small;color:#888;">This is an automated notification from the Garden Watering Tracker on behalf of Greenway57 Garden Society</span>
   </div>`;
-    
+
     // Send email to all gardeners
     GARDENER_EMAILS.forEach(email => {
       if (email && email.includes('@')) {
@@ -357,4 +357,3 @@ function testConnection() {
       spreadsheetId: SPREADSHEET_ID
     };
   }
-}
