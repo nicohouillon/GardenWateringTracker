@@ -204,6 +204,124 @@
             padding: 30px;
         }
 
+        /* Avatar Badge */
+        .avatar-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: #eef2ff;
+            border-radius: 25px;
+            padding: 10px 20px;
+            margin: 12px auto;
+            width: fit-content;
+            cursor: pointer;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .avatar-badge:hover {
+            background: #e0e7ff;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .avatar-badge:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4);
+        }
+
+        .avatar-emoji {
+            min-width: 48px;
+            min-height: 48px;
+            font-size: 2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .avatar-name {
+            font-weight: 600;
+            color: #495057;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 1em;
+        }
+
+        /* Avatar Picker Overlay */
+        .avatar-picker-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .avatar-picker-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 320px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .avatar-picker-title {
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+
+        .avatar-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            justify-items: center;
+        }
+
+        .avatar-picker-grid button {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            min-height: 44px;
+            font-size: 1.5em;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            padding: 0;
+        }
+
+        .avatar-picker-grid button:hover {
+            background: #e9ecef;
+            transform: scale(1.1);
+        }
+
+        .avatar-picker-grid button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.4);
+        }
+
+        .avatar-picker-grid button.selected {
+            border-color: #3b82f6;
+            background: #dbeafe;
+            box-shadow: inset 0 0 0 2px #3b82f6;
+        }
+
         /* Week-at-a-glance strip */
         .week-strip {
             display: flex;
@@ -301,6 +419,27 @@
             h1 {
                 font-size: 2em;
             }
+            .avatar-badge {
+                padding: 12px 24px;
+                margin: 16px auto;
+            }
+            .avatar-name {
+                max-width: 220px;
+                font-size: 1.05em;
+            }
+            .avatar-picker-content {
+                max-width: 400px;
+                padding: 28px;
+            }
+            .avatar-picker-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+            }
+            .avatar-picker-grid button {
+                width: 56px;
+                height: 56px;
+                font-size: 1.8em;
+            }
             .form-section {
                 padding: 25px;
                 border-radius: 15px;
@@ -352,12 +491,29 @@
             h1 {
                 font-size: 2.5em;
             }
+            .avatar-badge {
+                padding: 14px 28px;
+                margin: 20px auto;
+            }
+            .avatar-emoji {
+                font-size: 2.2em;
+            }
+            .avatar-name {
+                max-width: 260px;
+                font-size: 1.1em;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🌱 Garden Watering Tracker</h1>
+
+        <div id="avatarBadge" class="avatar-badge" role="button" tabindex="0"
+             aria-label="Change your avatar">
+            <span class="avatar-emoji" id="avatarEmoji"></span>
+            <span class="avatar-name" id="avatarName"></span>
+        </div>
         
         <div class="form-section">
             <div class="form-row">
@@ -402,6 +558,170 @@
     </div>
 
     <script>
+        // Avatar constants
+        const AVATAR_SET = [
+          '🌻', '🌵', '🌷', '🍅', '🥕', '🌿',
+          '🪴', '🐝', '🦋', '🐞', '🌈', '🍀',
+          '🌸', '🌾', '🍄', '🪻'
+        ];
+        const DEFAULT_AVATAR = '🌱';
+        let currentAvatar = null;
+
+        function getAvatarStorageKey(name) { return 'avatar_' + name; }
+
+        function getStoredAvatar(name) {
+          try {
+            return localStorage.getItem(getAvatarStorageKey(name)) || null;
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function storeAvatar(name, emoji) {
+          try {
+            localStorage.setItem(getAvatarStorageKey(name), emoji);
+          } catch (e) {
+            // Silent failure — avatar stays in memory for this session
+          }
+        }
+
+        function assignRandomAvatar(name) {
+          const emoji = AVATAR_SET[Math.floor(Math.random() * AVATAR_SET.length)];
+          storeAvatar(name, emoji);
+          currentAvatar = emoji;
+          return emoji;
+        }
+
+        function truncateName(name) {
+          if (!name) return '';
+          return name.length > 30 ? name.substring(0, 30) + '…' : name;
+        }
+
+        function showAvatarBadge(emoji, name) {
+          const badgeEl = document.getElementById('avatarBadge');
+          const emojiEl = document.getElementById('avatarEmoji');
+          const nameEl = document.getElementById('avatarName');
+          emojiEl.textContent = emoji;
+          nameEl.textContent = truncateName(name || '');
+          badgeEl.style.display = 'flex';
+          currentAvatar = emoji;
+        }
+
+        function initAvatar() {
+          const gardenerName = localStorage.getItem('gardenerName');
+          if (gardenerName) {
+            const stored = getStoredAvatar(gardenerName);
+            const emoji = stored || DEFAULT_AVATAR;
+            showAvatarBadge(emoji, gardenerName);
+          } else {
+            showAvatarBadge(DEFAULT_AVATAR, '');
+          }
+        }
+
+        function openAvatarPicker() {
+          const overlay = document.getElementById('avatarPicker');
+          const grid = document.getElementById('avatarGrid');
+
+          // Generate emoji buttons
+          grid.innerHTML = '';
+          AVATAR_SET.forEach(function(emoji) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = emoji;
+            btn.setAttribute('aria-label', emoji);
+            if (emoji === currentAvatar) {
+              btn.classList.add('selected');
+            }
+            btn.addEventListener('click', function() {
+              closeAvatarPicker(emoji);
+            });
+            grid.appendChild(btn);
+          });
+
+          overlay.style.display = 'flex';
+
+          // Focus the first grid button (or the selected one)
+          var selected = grid.querySelector('.selected') || grid.querySelector('button');
+          if (selected) selected.focus();
+
+          // Trap focus within modal
+          overlay.addEventListener('keydown', trapFocus);
+        }
+
+        function closeAvatarPicker(newEmoji) {
+          const overlay = document.getElementById('avatarPicker');
+          overlay.style.display = 'none';
+          overlay.removeEventListener('keydown', trapFocus);
+
+          if (newEmoji) {
+            const gardenerName = localStorage.getItem('gardenerName');
+            if (gardenerName) {
+              storeAvatar(gardenerName, newEmoji);
+            }
+            showAvatarBadge(newEmoji, gardenerName || '');
+          }
+
+          // Return focus to badge
+          document.getElementById('avatarBadge').focus();
+        }
+
+        function trapFocus(e) {
+          const overlay = document.getElementById('avatarPicker');
+          const focusable = overlay.querySelectorAll('button');
+          if (focusable.length === 0) return;
+
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            closeAvatarPicker(null);
+            return;
+          }
+
+          if (e.key === 'Tab') {
+            if (e.shiftKey) {
+              if (document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+              }
+            } else {
+              if (document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+              }
+            }
+            return;
+          }
+
+          // Arrow key navigation within the emoji grid
+          var buttons = Array.from(focusable);
+          var idx = buttons.indexOf(document.activeElement);
+          var cols = 4;
+
+          if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (idx >= 0 && idx < buttons.length - 1) {
+              buttons[idx + 1].focus();
+            }
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (idx > 0) {
+              buttons[idx - 1].focus();
+            }
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (idx >= 0 && idx + cols < buttons.length) {
+              buttons[idx + cols].focus();
+            }
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (idx >= cols) {
+              buttons[idx - cols].focus();
+            }
+          }
+        }
+
         // Initialize with today's date
         document.getElementById('date').valueAsDate = new Date();
         
@@ -410,7 +730,27 @@
         if (savedGardener) {
             document.getElementById('gardener').value = savedGardener;
         }
-        
+
+        initAvatar();
+
+        // Avatar badge click handler
+        document.getElementById('avatarBadge').addEventListener('click', openAvatarPicker);
+
+        // Badge keyboard handler (Enter/Space opens picker)
+        document.getElementById('avatarBadge').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openAvatarPicker();
+          }
+        });
+
+        // Backdrop click handler (close without changing)
+        document.getElementById('avatarPicker').addEventListener('click', function(e) {
+          if (e.target === this) {
+            closeAvatarPicker(null);
+          }
+        });
+
         // Week navigation
         let currentWeekStart = getWeekStart(new Date());
         
@@ -469,6 +809,11 @@
             
             // Persist gardener name for next visit
             localStorage.setItem('gardenerName', gardener);
+            
+            // Avatar: look up or assign for this gardener
+            const existingAvatar = getStoredAvatar(gardener);
+            const avatar = existingAvatar || assignRandomAvatar(gardener);
+            showAvatarBadge(avatar, gardener);
             
             console.log('Adding record:', recordData);
             
@@ -689,5 +1034,15 @@
         // Initialize display
         displayRecords();
     </script>
+
+    <div id="avatarPicker" class="avatar-picker-overlay" role="dialog"
+         aria-modal="true" aria-label="Choose your avatar" style="display: none;">
+      <div class="avatar-picker-content">
+        <h3 class="avatar-picker-title">Pick your avatar</h3>
+        <div class="avatar-picker-grid" id="avatarGrid" role="grid">
+          <!-- Emoji buttons generated by JS -->
+        </div>
+      </div>
+    </div>
 </body>
 </html>
