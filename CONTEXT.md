@@ -41,6 +41,11 @@ Members log daily watering, see who did it, and get email notifications automati
 - Light stats / streak view (how many days watered this month, who waters most)
 - Plant or zone tracking (not just "the garden" but specific beds)
 
+## Workflow Conventions
+- Each new spec gets its own feature branch: `feature/<spec-name>`
+- Branch from main before starting implementation tasks
+- Merge back via PR when all tasks are complete
+
 ## Changelog
 ### 2026-07
 - **Multiple gardeners per day:** `findRecordRow`, `addWateringRecord`, `deleteWateringRecord` now key on date + gardener name (case-insensitive). Two gardeners can each log independently on the same day; a second submission by the same gardener on the same day still updates their own record.
