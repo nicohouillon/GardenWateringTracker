@@ -21,6 +21,11 @@ Items are loosely ordered by priority. This is a living document — add things 
   - Update `APP_URL` Script Property — no code change needed
 
 ### App improvements
+- [ ] Extract CSS into separate file (spec: `.kiro/specs/css-extraction/`)
+  - Move all inline `<style>` content from `index.html` into `styles.html`
+  - Use Apps Script `include()` pattern + `createTemplateFromFile` to inject at serve time
+  - Platform constraint: Google Apps Script does not support `<link>` tags for local files
+  - Purely a maintainability refactor — no visual changes
 - [ ] Monthly summary view
   - Show "watered X/31 days this month" and top gardener
   - Could be a toggle or a separate section below the week view
