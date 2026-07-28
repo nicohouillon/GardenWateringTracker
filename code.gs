@@ -1,11 +1,17 @@
 // Google Apps Script Code for Garden Watering Tracker with Email Notifications
 
 // Configuration - UPDATE THESE EMAIL ADDRESSES AND SPREADSHEET_ID
-const emails_list = getEnv('GARDENER_EMAILS');
-const GARDENER_EMAILS = JSON.parse(emails_list);
-console.log(GARDENER_EMAILS);
+// GARDENER_EMAILS: comma-separated list of email addresses, e.g. "alice@example.com, bob@example.com"
+const GARDENER_EMAILS = (getEnv('GARDENER_EMAILS') || '')
+  .split(',')
+  .map(e => e.trim().replace(/^["']|["']$/g, ''))
+  .filter(e => e.includes('@'));
+console.log('Loaded', GARDENER_EMAILS.length, 'gardener email(s)');
 // !!! IMPORTANT: Replace with your actual Google Sheet ID
 const SPREADSHEET_ID = getEnv('SPREADSHEET_ID');
+const APP_URL = getEnv('APP_URL') || '';
+const TEST_MODE = getEnv('TEST_MODE') === 'true';
+const TEST_EMAIL = (getEnv('TEST_EMAIL') || '').trim().replace(/^["']|["']$/g, '');
 
 // Web app entry point
 function doGet(e) {
@@ -26,7 +32,7 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify(getWateringRecords(data.weekStart)))
         .setMimeType(ContentService.MimeType.JSON);
     } else if (data.action === 'deleteRecord') {
-      return ContentService.createTextOutput(JSON.stringify(deleteWateringRecord(data.date)))
+      return ContentService.createTextOutput(JSON.stringify(deleteWateringRecord(data.date, data.gardener)))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
@@ -49,14 +55,14 @@ function addWateringRecord(data) {
   const sheet = getOrCreateSheet();
   const { date, gardener, watered, notes } = data;
   
-  // Check if record already exists
-  const existingRowIndex = findRecordRow(sheet, date);
+  // Check if a record already exists for this date+gardener combination
+  const existingRowIndex = findRecordRow(sheet, date, gardener);
   
   if (existingRowIndex > 0) {
-    // Update existing record
+    // Update existing record for this gardener on this date
     sheet.getRange(existingRowIndex, 1, 1, 5).setValues([[date, gardener, watered, notes, new Date()]]);
   } else {
-    // Add new record
+    // Add new record — multiple gardeners can log on the same day
     sheet.appendRow([date, gardener, watered, notes, new Date()]);
   }
   
@@ -65,7 +71,7 @@ function addWateringRecord(data) {
     sendWateringNotification(date, gardener, notes);
   }
   
-  return { // Changed from ContentService.createTextOutput
+  return {
     success: true,
     message: 'Record added successfully'
   };
@@ -154,16 +160,16 @@ function getWateringRecords(weekStart) {
   }
 }
 
-// Delete a watering record
-function deleteWateringRecord(date) {
+// Delete a watering record — matches on date + gardener
+function deleteWateringRecord(date, gardener) {
   const sheet = getOrCreateSheet();
-  const rowIndex = findRecordRow(sheet, date);
+  const rowIndex = findRecordRow(sheet, date, gardener);
   
   if (rowIndex > 0) {
     sheet.deleteRow(rowIndex);
   }
   
-  return { // Changed from ContentService.createTextOutput
+  return {
     success: true,
     message: 'Record deleted successfully'
   };
@@ -199,15 +205,17 @@ function getOrCreateSheet() {
   return sheet;
 }
 
-// Find row index for a specific date
-function findRecordRow(sheet, date) {
+// Find row index for a specific date + gardener combination
+function findRecordRow(sheet, date, gardener) {
   const data = sheet.getDataRange().getValues();
   
   for (let i = 1; i < data.length; i++) {
     let rowDate = data[i][0];
+    let rowGardener = String(data[i][1] || '').trim().toLowerCase();
     let compareDate = date;
+    let compareGardener = String(gardener || '').trim().toLowerCase();
     
-    // Convert both to string format for comparison
+    // Normalise both dates to YYYY-MM-DD strings for comparison
     if (rowDate instanceof Date) {
       rowDate = rowDate.toISOString().split('T')[0];
     }
@@ -215,7 +223,7 @@ function findRecordRow(sheet, date) {
       compareDate = compareDate.toISOString().split('T')[0];
     }
     
-    if (rowDate === compareDate) {
+    if (rowDate === compareDate && rowGardener === compareGardener) {
       return i + 1; // Return 1-based index
     }
   }
@@ -266,12 +274,20 @@ function sendWateringNotification(date, gardener, notes) {
     👨‍🌾 Gardener: ${gardener}<br>
     ${notes ? `📝 Notes: ${notes}<br>` : ''}
     <br>
+    ${APP_URL ? `View or add watering records at the <a href="${APP_URL}">Garden Watering Tracker</a><br><br>` : ''}
     Thank you for taking care of our garden! 🌿<br><br>
     <span style="font-size:small;color:#888;">This is an automated notification from the Garden Watering Tracker on behalf of Greenway57 Garden Society</span>
   </div>`;
     
-    // Send email to all gardeners
-    GARDENER_EMAILS.forEach(email => {
+    // In test mode, send only to TEST_EMAIL instead of the full list
+    const recipients = TEST_MODE ? [TEST_EMAIL].filter(e => e.includes('@')) : GARDENER_EMAILS;
+
+    if (TEST_MODE) {
+      console.log('TEST MODE: email would go to', GARDENER_EMAILS, '— sending only to', TEST_EMAIL);
+    }
+
+    // Send email to recipients
+    recipients.forEach(email => {
       if (email && email.includes('@')) {
         try {
           sendEmailWithGmailApi(email, subject, body);
