@@ -15,9 +15,20 @@ const TEST_EMAIL = (getEnv('TEST_EMAIL') || '').trim().replace(/^["']|["']$/g, '
 
 // Web app entry point
 function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('index')
+  return HtmlService.createTemplateFromFile('index')
+    .evaluate()
     .setTitle('Garden Watering Tracker')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Reads an HTML file from the project and returns its content as a string.
+ * Used by template scriptlets to inject partial HTML files.
+ * @param {string} filename - The name of the HTML file (without .html extension)
+ * @returns {string} The raw HTML content of the file
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 // Handle form submissions
